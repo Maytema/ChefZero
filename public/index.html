@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🍳 FridgeChefs - Рецепты из того что есть</title>
+    <title>🍳 FridgeChef - Рецепты из того что есть</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/17.0.8/css/intlTelInput.css">
     <meta name="description" content="Найди рецепты по ингредиентам из холодильника. Быстро, просто, бесплатно.">
 </head>
 <body>
@@ -12,21 +13,82 @@
         <!-- Шапка -->
         <header class="header">
             <div class="logo">🍳</div>
-            <h1>FridgeChefs</h1>
-            <p class="subtitle">Найди рецепт по ингредиентам</p>
+            <div class="header-text">
+                <h1>FridgeChef</h1>
+                <p class="subtitle">Рецепты из того что есть</p>
+            </div>
+            <button class="burger-menu" id="burger-menu">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
         </header>
 
-        <!-- Поиск -->
-        <div class="search-container">
-            <input type="text" class="search-input" id="search" 
-                   placeholder="Поиск продуктов...">
+        <!-- Боковое меню -->
+        <div class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-logo">🍳</div>
+                <h3>FridgeChef</h3>
+                <button class="sidebar-close" id="sidebar-close">×</button>
+            </div>
+            
+            <div class="sidebar-menu">
+                <a href="#" class="sidebar-item">
+                    <span>📋</span> Мои рецепты
+                </a>
+                <a href="#" class="sidebar-item">
+                    <span>⭐</span> Избранное
+                </a>
+                <a href="#" class="sidebar-item">
+                    <span>📊</span> Статистика
+                </a>
+                <a href="#" class="sidebar-item">
+                    <span>ℹ️</span> О проекте
+                </a>
+                <a href="https://wa.me/996774032150" class="sidebar-item" target="_blank">
+                    <span>💬</span> Контакты
+                </a>
+            </div>
+            
+            <div class="sidebar-footer">
+                <div class="user-info">
+                    <div class="user-name">Гость</div>
+                    <div class="user-plan">Бесплатная версия</div>
+                </div>
+                <button class="sidebar-upgrade" onclick="app.showModal('premium-modal')">
+                    💎 Улучшить
+                </button>
+            </div>
         </div>
 
+        <!-- Поиск и выбранные продукты -->
+        <section class="main-section">
+            <div class="search-container">
+                <div class="search-wrapper">
+                    <input type="text" class="search-input" id="search" 
+                           placeholder="Начните вводить продукт...">
+                    <div class="search-icon">🔍</div>
+                </div>
+                <div class="search-results" id="search-results"></div>
+            </div>
+
+            <!-- Выбранные продукты -->
+            <div class="selected-products" id="selected-products">
+                <div class="selected-header">
+                    <h3>Выбрано: <span id="selected-count">0</span></h3>
+                    <button class="btn-clear" id="clear-selected">Очистить</button>
+                </div>
+                <div class="chips-container" id="chips-container">
+                    <!-- Чипсы выбранных продуктов -->
+                </div>
+            </div>
+        </section>
+
         <!-- Категории продуктов -->
-        <section class="categories-section">
+        <section class="categories-section" id="categories-section">
             <div class="section-title">
-                <h2>Выберите продукты</h2>
-                <span class="selected-count" id="selected-count">0</span>
+                <h2>Все продукты по категориям</h2>
+                <button class="btn-toggle-categories" id="toggle-categories">Свернуть все</button>
             </div>
 
             <div id="categories-container">
@@ -39,6 +101,12 @@
             <button class="btn btn-primary" id="find-recipes">
                 🔍 Найти рецепты
             </button>
+            <button class="btn btn-ai" id="ai-recipe-btn">
+                🧠 ИИ-рецепт
+            </button>
+            <div class="ai-counter" id="ai-usage-counter">
+                ИИ-рецепты: 0/3 бесплатно
+            </div>
             <button class="btn btn-premium" id="show-premium">
                 💎 Премиум
             </button>
@@ -57,32 +125,29 @@
 
         <!-- Футер -->
         <footer class="footer">
-            <div class="footer-section">
-                <h3 class="footer-title">О проекте</h3>
-                <div class="footer-links">
-                    <p style="color: #7f8c8d; font-size: 14px; line-height: 1.5;">
-                        FridgeChefs помогает приготовить вкусные блюда из того, что есть в холодильнике.
-                        Просто выберите продукты и получите подходящие рецепты.
-                    </p>
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h3 class="footer-title">О проекте</h3>
+                    <p>FridgeChef помогает приготовить вкусные блюда из того, что есть в холодильнике. Просто выберите продукты и получите подходящие рецепты.</p>
                 </div>
-            </div>
 
-            <div class="footer-section">
-                <h3 class="footer-title">Контакты</h3>
-                <div class="contact-info">
-                    <div class="contact-item">
-                        📧 support@fridgechefs.com
-                    </div>
-                    <div class="contact-item">
-                        <a href="https://wa.me/996774032150" class="footer-link" target="_blank">
-                            💬 WhatsApp: +996 774 032 150
-                        </a>
+                <div class="footer-section">
+                    <h3 class="footer-title">Контакты</h3>
+                    <div class="contact-info">
+                        <div class="contact-item">
+                            📧 support@fridgechef.com
+                        </div>
+                        <div class="contact-item">
+                            <a href="https://wa.me/996774032150" class="footer-link" target="_blank">
+                                💬 WhatsApp: +996 774 032 150
+                            </a>
+                        </div>
                     </div>
                 </div>
             </div>
 
             <div class="copyright">
-                © 2024 FridgeChefs. Все права защищены.
+                © 2024 FridgeChef. Все права защищены.
             </div>
         </footer>
     </div>
@@ -100,6 +165,7 @@
                     <div class="modal-option-title">10 дополнительных рецептов</div>
                     <div class="modal-option-price">99₽</div>
                     <div class="modal-option-desc">Однократная покупка</div>
+                    <div class="modal-option-badge">🔥 Популярный</div>
                 </div>
 
                 <div class="modal-option selected" data-plan="monthly">
@@ -129,9 +195,13 @@
             </div>
 
             <div class="modal-options">
-                <div class="modal-option" data-method="whatsapp">
+                <div class="modal-option selected" data-method="whatsapp">
                     <div class="modal-option-title">WhatsApp</div>
                     <div class="modal-option-desc">Отправить себе в WhatsApp</div>
+                    <div class="phone-input-container">
+                        <input type="tel" id="whatsapp-phone" class="phone-input" 
+                               placeholder="+996 774 032 150">
+                    </div>
                 </div>
 
                 <div class="modal-option" data-method="telegram">
@@ -151,6 +221,45 @@
         </div>
     </div>
 
+    <!-- DonatePay модалка -->
+    <div class="modal" id="donate-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">💳 Оплата</div>
+                <div class="modal-subtitle">Выберите способ оплаты</div>
+            </div>
+
+            <div class="modal-options">
+                <div class="modal-option selected" data-method="donatepay">
+                    <div class="modal-option-title">💎 DonatePay</div>
+                    <div class="modal-option-desc">Оплата картой онлайн</div>
+                    <div class="modal-option-icon">🔄</div>
+                </div>
+
+                <div class="modal-option" data-method="card">
+                    <div class="modal-option-title">💳 Перевод на карту</div>
+                    <div class="modal-option-desc">Ручной перевод</div>
+                    <div class="modal-option-icon">📱</div>
+                </div>
+            </div>
+
+            <div class="modal-info" id="payment-info">
+                <p>После оплаты напишите нам в WhatsApp для активации</p>
+            </div>
+
+            <div class="modal-actions">
+                <button class="modal-btn modal-btn-primary" id="proceed-payment">
+                    Перейти к оплате
+                </button>
+                <button class="modal-btn modal-btn-secondary" id="cancel-payment">
+                    Отмена
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/17.0.8/js/intlTelInput.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/fuse.js@6.6.2/dist/fuse.min.js"></script>
     <script src="app.js"></script>
 </body>
-</html>
+    </html>
