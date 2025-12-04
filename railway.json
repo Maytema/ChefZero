@@ -6,9 +6,19 @@
   },
   "deploy": {
     "startCommand": "node server.js",
-    "healthcheckPath": "/",
-    "healthcheckTimeout": 60,
+    "healthcheckPath": "/health",
+    "healthcheckTimeout": 30,
     "restartPolicyType": "ON_FAILURE",
-    "restartPolicyMaxRetries": 10
+    "restartPolicyMaxRetries": 5
+  },
+  "variables": {
+    "PORT": {
+      "description": "Port to run the server on",
+      "value": "3000"
+    },
+    "GEMINI_API_KEY": {
+      "description": "Google Gemini API key for AI recipes",
+      "required": false
+    }
   }
 }
