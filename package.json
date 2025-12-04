@@ -1,5 +1,5 @@
 {
-  "name": "food-ai-cook",
+  "name": "fridgechefs",
   "version": "1.0.0",
   "type": "module",
   "scripts": {
@@ -11,5 +11,8 @@
     "@supabase/supabase-js": "^2.39.0",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }
