@@ -3,13 +3,25 @@ class FridgeChefsApp {
         this.selectedProducts = [];
         this.currentRecipes = [];
         this.currentShareRecipe = null;
+        this.allProducts = [];
+        this.fuse = null;
+        this.aiUsageCount = parseInt(localStorage.getItem('aiUsageCount') || '0');
+        this.maxFreeAIUses = 3;
+        this.phoneInput = null;
+        this.isCategoriesCollapsed = false;
+        
         this.init();
     }
 
     async init() {
         await this.loadProducts();
+        this.initFuse();
         this.setupEventListeners();
+        this.renderSelectedChips();
         this.updateSelectedCount();
+        this.updateAIUsageCounter();
+        this.setupPhoneInput();
+        this.setupBurgerMenu();
     }
 
     async loadProducts() {
@@ -18,18 +30,42 @@ class FridgeChefsApp {
             const data = await response.json();
             
             if (data.success) {
-                this.renderCategories(data.categories);
+                this.categories = data.categories;
+                this.allProducts = [];
+                
+                Object.entries(data.categories).forEach(([categoryName, products]) => {
+                    products.forEach(product => {
+                        this.allProducts.push({
+                            ...product,
+                            category: categoryName
+                        });
+                    });
+                });
+                
+                this.renderCategories();
             }
         } catch (error) {
             console.error('Error loading products:', error);
+            this.showError('Ошибка загрузки продуктов');
         }
     }
 
-    renderCategories(categories) {
+    initFuse() {
+        if (this.allProducts.length > 0) {
+            this.fuse = new Fuse(this.allProducts, {
+                keys: ['name'],
+                threshold: 0.3,
+                includeScore: true,
+                distance: 100
+            });
+        }
+    }
+
+    renderCategories() {
         const container = document.getElementById('categories-container');
         container.innerHTML = '';
 
-        Object.entries(categories).forEach(([categoryName, products]) => {
+        Object.entries(this.categories).forEach(([categoryName, products]) => {
             const categoryElement = this.createCategoryElement(categoryName, products);
             container.appendChild(categoryElement);
         });
@@ -42,13 +78,17 @@ class FridgeChefsApp {
         div.className = 'category';
         div.innerHTML = `
             <div class="category-header" data-category="${name}">
-                <span class="category-name">${name}</span>
-                <span class="category-count">${products.length}</span>
+                <div class="category-name">
+                    <span class="category-emoji">${this.getCategoryEmoji(name)}</span>
+                    ${name}
+                </div>
+                <div class="category-count">${products.length}</div>
                 <span class="category-toggle">›</span>
             </div>
-            <div class="products-list">
+            <div class="category-products">
                 ${products.map(product => `
-                    <div class="product-item" data-id="${product.id}">
+                    <div class="product-item ${this.isProductSelected(product.id) ? 'selected' : ''}" 
+                         data-id="${product.id}">
                         <span class="product-emoji">${product.icon}</span>
                         <span class="product-name">${product.name}</span>
                     </div>
@@ -58,58 +98,64 @@ class FridgeChefsApp {
         return div;
     }
 
+    getCategoryEmoji(category) {
+        const emojiMap = {
+            'Базовые': '🧂',
+            'Овощи': '🥦',
+            'Молочные': '🥛',
+            'Мясо и птица': '🍗',
+            'Рыба и морепродукты': '🐟',
+            'Крупы и макароны': '🍚',
+            'Фрукты и ягоды': '🍎',
+            'Соусы и специи': '🌶️',
+            'Хлеб и выпечка': '🍞'
+        };
+        return emojiMap[category] || '📦';
+    }
+
     setupCategoryToggles() {
         document.querySelectorAll('.category-header').forEach(header => {
             header.addEventListener('click', (e) => {
-                if (e.target.classList.contains('product-item')) return;
+                if (e.target.closest('.product-item')) return;
                 
                 const category = header.closest('.category');
-                const isActive = category.classList.contains('active');
+                category.classList.toggle('active');
                 
-                document.querySelectorAll('.category').forEach(cat => {
-                    cat.classList.remove('active');
-                });
-                
-                if (!isActive) {
-                    category.classList.add('active');
-                }
+                const toggle = header.querySelector('.category-toggle');
+                toggle.textContent = category.classList.contains('active') ? '▼' : '›';
             });
         });
 
         document.querySelectorAll('.product-item').forEach(item => {
             item.addEventListener('click', (e) => {
                 e.stopPropagation();
-                this.toggleProduct(item);
+                this.toggleProduct(parseInt(item.dataset.id));
             });
         });
     }
 
-    toggleProduct(productElement) {
-        const productId = parseInt(productElement.dataset.id);
-        const productName = productElement.querySelector('.product-name').textContent;
-        const productIcon = productElement.querySelector('.product-emoji').textContent;
-        
-        const existingIndex = this.selectedProducts.findIndex(p => p.id === productId);
-        
-        if (existingIndex >= 0) {
-            this.selectedProducts.splice(existingIndex, 1);
-            productElement.classList.remove('selected');
-        } else {
-            this.selectedProducts.push({ id: productId, name: productName, icon: productIcon });
-            productElement.classList.add('selected');
-        }
-        
-        this.updateSelectedCount();
-    }
-
-    updateSelectedCount() {
-        document.getElementById('selected-count').textContent = this.selectedProducts.length;
-    }
-
     setupEventListeners() {
         // Поиск
-        document.getElementById('search').addEventListener('input', (e) => {
-            this.filterProducts(e.target.value);
+        const searchInput = document.getElementById('search');
+        searchInput.addEventListener('input', (e) => {
+            this.handleSearch(e.target.value);
+        });
+
+        searchInput.addEventListener('focus', () => {
+            if (searchInput.value.length > 0) {
+                document.getElementById('search-results').classList.add('active');
+            }
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.search-container')) {
+                document.getElementById('search-results').classList.remove('active');
+            }
+        });
+
+        // Очистка выбранных
+        document.getElementById('clear-selected').addEventListener('click', () => {
+            this.clearSelectedProducts();
         });
 
         // Найти рецепты
@@ -117,7 +163,12 @@ class FridgeChefsApp {
             this.findRecipes();
         });
 
-        // Премиум модалка
+        // ИИ рецепт
+        document.getElementById('ai-recipe-btn').addEventListener('click', () => {
+            this.generateAIRecipe();
+        });
+
+        // Премиум
         document.getElementById('show-premium').addEventListener('click', () => {
             this.showModal('premium-modal');
         });
@@ -127,10 +178,10 @@ class FridgeChefsApp {
         });
 
         document.getElementById('buy-premium').addEventListener('click', () => {
-            this.buyPremium();
+            this.showPaymentModal();
         });
 
-        // Модалка отправки
+        // Отправка рецепта
         document.getElementById('cancel-share').addEventListener('click', () => {
             this.hideModal('share-modal');
         });
@@ -139,7 +190,21 @@ class FridgeChefsApp {
             this.sendRecipe();
         });
 
-        // Закрытие модалок по клику вне
+        // Оплата
+        document.getElementById('proceed-payment').addEventListener('click', () => {
+            this.processPayment();
+        });
+
+        document.getElementById('cancel-payment').addEventListener('click', () => {
+            this.hideModal('donate-modal');
+        });
+
+        // Переключение категорий
+        document.getElementById('toggle-categories').addEventListener('click', () => {
+            this.toggleAllCategories();
+        });
+
+        // Модалки
         document.querySelectorAll('.modal').forEach(modal => {
             modal.addEventListener('click', (e) => {
                 if (e.target === modal) {
@@ -147,37 +212,205 @@ class FridgeChefsApp {
                 }
             });
         });
+
+        // Опции в модалках
+        document.querySelectorAll('.modal-option').forEach(option => {
+            option.addEventListener('click', (e) => {
+                const modal = option.closest('.modal-content');
+                modal.querySelectorAll('.modal-option').forEach(opt => {
+                    opt.classList.remove('selected');
+                });
+                option.classList.add('selected');
+            });
+        });
     }
 
-    filterProducts(searchTerm) {
-        const term = searchTerm.toLowerCase().trim();
-        
-        document.querySelectorAll('.category').forEach(category => {
-            let hasVisibleProducts = false;
-            
-            category.querySelectorAll('.product-item').forEach(item => {
-                const productName = item.querySelector('.product-name').textContent.toLowerCase();
-                
-                if (term === '' || productName.includes(term)) {
-                    item.style.display = 'flex';
-                    hasVisibleProducts = true;
-                } else {
-                    item.style.display = 'none';
-                }
+    setupPhoneInput() {
+        const phoneElement = document.getElementById('whatsapp-phone');
+        if (phoneElement) {
+            this.phoneInput = window.intlTelInput(phoneElement, {
+                initialCountry: "tj",
+                separateDialCode: true,
+                utilsScript: "https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/17.0.8/js/utils.js",
             });
-            
-            const categoryHeader = category.querySelector('.category-header');
-            categoryHeader.style.display = hasVisibleProducts ? 'flex' : 'none';
-            
-            if (hasVisibleProducts && !category.classList.contains('active')) {
-                category.classList.add('active');
+        }
+    }
+
+    setupBurgerMenu() {
+        const burgerMenu = document.getElementById('burger-menu');
+        const sidebar = document.getElementById('sidebar');
+        const sidebarClose = document.getElementById('sidebar-close');
+
+        burgerMenu.addEventListener('click', () => {
+            sidebar.classList.add('active');
+        });
+
+        sidebarClose.addEventListener('click', () => {
+            sidebar.classList.remove('active');
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.sidebar') && !e.target.closest('.burger-menu')) {
+                sidebar.classList.remove('active');
             }
         });
     }
 
+    handleSearch(searchTerm) {
+        const term = searchTerm.toLowerCase().trim();
+        const resultsContainer = document.getElementById('search-results');
+        
+        if (term === '') {
+            resultsContainer.classList.remove('active');
+            resultsContainer.innerHTML = '';
+            return;
+        }
+
+        if (!this.fuse) return;
+
+        const results = this.fuse.search(term).slice(0, 10); // Ограничиваем 10 результатами
+        
+        if (results.length === 0) {
+            resultsContainer.innerHTML = `
+                <div class="search-empty">
+                    <div style="font-size: 24px; margin-bottom: 10px;">🔍</div>
+                    <p>Ничего не найдено</p>
+                    <p style="font-size: 12px; margin-top: 5px;">Попробуйте другие слова</p>
+                </div>
+            `;
+        } else {
+            resultsContainer.innerHTML = results.map(result => {
+                const product = result.item;
+                return `
+                    <div class="search-item ${this.isProductSelected(product.id) ? 'selected' : ''}" 
+                         data-id="${product.id}">
+                        <span class="search-item-emoji">${product.icon}</span>
+                        <span class="search-item-name">${product.name}</span>
+                        <span class="search-item-category">${product.category}</span>
+                    </div>
+                `;
+            }).join('');
+            
+            // Добавляем обработчики кликов
+            resultsContainer.querySelectorAll('.search-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    this.toggleProduct(parseInt(item.dataset.id));
+                });
+            });
+        }
+        
+        resultsContainer.classList.add('active');
+    }
+
+    toggleProduct(productId) {
+        const product = this.allProducts.find(p => p.id === productId);
+        if (!product) return;
+
+        const existingIndex = this.selectedProducts.findIndex(p => p.id === productId);
+        
+        if (existingIndex >= 0) {
+            // Удаляем продукт
+            this.selectedProducts.splice(existingIndex, 1);
+        } else {
+            // Добавляем продукт
+            this.selectedProducts.push({
+                id: productId,
+                name: product.name,
+                icon: product.icon,
+                category: product.category
+            });
+        }
+
+        // Обновляем UI
+        this.updateProductSelectionUI(productId);
+        this.renderSelectedChips();
+        this.updateSelectedCount();
+    }
+
+    updateProductSelectionUI(productId) {
+        // Обновляем в результатах поиска
+        const searchItem = document.querySelector(`.search-item[data-id="${productId}"]`);
+        if (searchItem) {
+            searchItem.classList.toggle('selected', this.isProductSelected(productId));
+        }
+
+        // Обновляем в категориях
+        const categoryItem = document.querySelector(`.product-item[data-id="${productId}"]`);
+        if (categoryItem) {
+            categoryItem.classList.toggle('selected', this.isProductSelected(productId));
+        }
+    }
+
+    isProductSelected(productId) {
+        return this.selectedProducts.some(p => p.id === productId);
+    }
+
+    renderSelectedChips() {
+        const container = document.getElementById('chips-container');
+        
+        if (this.selectedProducts.length === 0) {
+            container.innerHTML = `
+                <div class="empty-chips">
+                    <p style="color: #95a5a6; font-style: italic; padding: 10px;">
+                        Выберите продукты из списка или воспользуйтесь поиском
+                    </p>
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = this.selectedProducts.map(product => `
+            <div class="chip" data-id="${product.id}">
+                <span class="chip-emoji">${product.icon}</span>
+                <span class="chip-name">${product.name}</span>
+                <button class="chip-remove" title="Удалить">×</button>
+            </div>
+        `).join('');
+
+        // Добавляем обработчики удаления
+        container.querySelectorAll('.chip-remove').forEach(button => {
+            button.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const chip = button.closest('.chip');
+                const productId = parseInt(chip.dataset.id);
+                this.toggleProduct(productId);
+            });
+        });
+    }
+
+    clearSelectedProducts() {
+        if (this.selectedProducts.length === 0) return;
+        
+        if (confirm(`Удалить все выбранные продукты (${this.selectedProducts.length})?`)) {
+            // Снимаем выделение со всех продуктов
+            this.selectedProducts.forEach(product => {
+                this.updateProductSelectionUI(product.id);
+            });
+            
+            this.selectedProducts = [];
+            this.renderSelectedChips();
+            this.updateSelectedCount();
+        }
+    }
+
+    updateSelectedCount() {
+        document.getElementById('selected-count').textContent = this.selectedProducts.length;
+    }
+
+    updateAIUsageCounter() {
+        const counter = document.getElementById('ai-usage-counter');
+        if (counter) {
+            const remaining = this.maxFreeAIUses - this.aiUsageCount;
+            counter.textContent = `ИИ-рецепты: ${remaining}/${this.maxFreeAIUses} бесплатно`;
+            counter.style.background = remaining > 0 
+                ? 'linear-gradient(135deg, #74b9ff, #0984e3)'
+                : 'linear-gradient(135deg, #e74c3c, #c0392b)';
+        }
+    }
+
     async findRecipes() {
         if (this.selectedProducts.length === 0) {
-            alert('Выберите хотя бы один продукт');
+            this.showError('Выберите хотя бы один продукт');
             return;
         }
 
@@ -201,12 +434,77 @@ class FridgeChefsApp {
                 this.showRecipes(data.recipes);
                 document.getElementById('results-count').textContent = data.count;
                 document.getElementById('results-section').style.display = 'block';
+                
+                // Прокручиваем к результатам
+                document.getElementById('results-section').scrollIntoView({ 
+                    behavior: 'smooth',
+                    block: 'start'
+                });
             } else {
-                alert('Не удалось найти рецепты');
+                this.showError('Не удалось найти рецепты');
             }
         } catch (error) {
             console.error('Error finding recipes:', error);
-            alert('Ошибка соединения');
+            this.showError('Ошибка соединения');
+        } finally {
+            button.innerHTML = originalText;
+            button.disabled = false;
+        }
+    }
+
+    async generateAIRecipe() {
+        if (this.selectedProducts.length === 0) {
+            this.showError('Выберите продукты для генерации рецепта');
+            return;
+        }
+        
+        // Проверка лимита
+        if (this.aiUsageCount >= this.maxFreeAIUses) {
+            this.showModal('premium-modal');
+            return;
+        }
+
+        const button = document.getElementById('ai-recipe-btn');
+        const originalText = button.innerHTML;
+        button.innerHTML = '🧠 Генерируем...';
+        button.disabled = true;
+
+        try {
+            const ingredients = this.selectedProducts.map(p => p.name);
+            const response = await fetch('/api/generate-ai-recipes', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    ingredients,
+                    maxRecipes: 2 
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                this.aiUsageCount++;
+                localStorage.setItem('aiUsageCount', this.aiUsageCount);
+                this.updateAIUsageCounter();
+                
+                // Добавляем ИИ-рецепты
+                this.currentRecipes = [...data.recipes, ...this.currentRecipes];
+                this.showRecipes(this.currentRecipes);
+                document.getElementById('results-section').style.display = 'block';
+                
+                // Прокручиваем к результатам
+                document.getElementById('results-section').scrollIntoView({ 
+                    behavior: 'smooth',
+                    block: 'start'
+                });
+                
+                this.showSuccess('ИИ-рецепт успешно создан!');
+            } else {
+                this.showError('Ошибка генерации рецепта');
+            }
+        } catch (error) {
+            console.error('AI generation error:', error);
+            this.showError('Ошибка генерации ИИ-рецепта');
         } finally {
             button.innerHTML = originalText;
             button.disabled = false;
@@ -228,11 +526,13 @@ class FridgeChefsApp {
         }
 
         container.innerHTML = recipes.map(recipe => `
-            <div class="recipe-card" data-id="${recipe.id}">
+            <div class="recipe-card ${recipe.aiGenerated ? 'ai-recipe' : ''}" data-id="${recipe.id}">
+                ${recipe.aiGenerated ? '<div class="ai-badge">🧠 ИИ-рецепт</div>' : ''}
                 <div class="recipe-title">${recipe.name}</div>
                 <div class="recipe-meta">
                     <span>⏱️ ${recipe.time}</span>
                     <span>🎚️ ${recipe.difficulty}</span>
+                    ${recipe.aiGenerated ? '<span>🤖 Сгенерировано ИИ</span>' : ''}
                 </div>
                 
                 <div class="recipe-ingredients">
@@ -252,113 +552,4 @@ class FridgeChefsApp {
                     <button class="btn-small btn-share" onclick="app.shareRecipe(${recipe.id})">
                         📤 Отправить себе
                     </button>
-                    <button class="btn-small btn-download" onclick="app.downloadRecipe(${recipe.id})">
-                        📥 Скачать PDF
-                    </button>
-                </div>
-            </div>
-        `).join('');
-    }
-
-    shareRecipe(recipeId) {
-        const recipe = this.currentRecipes.find(r => r.id === recipeId);
-        if (!recipe) return;
-
-        this.currentShareRecipe = recipe;
-        this.showModal('share-modal');
-    }
-
-    sendRecipe() {
-        const method = document.querySelector('#share-modal .modal-option.selected')?.dataset.method;
-        if (!method || !this.currentShareRecipe) return;
-
-        const recipe = this.currentShareRecipe;
-        const text = this.formatRecipeText(recipe);
-
-        if (method === 'whatsapp') {
-            const phone = prompt('Введите номер телефона (например: +996774032150):', '+996');
-            if (phone) {
-                const whatsappUrl = `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
-                window.open(whatsappUrl, '_blank');
-            }
-        } else if (method === 'telegram') {
-            const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent(window.location.href)}&text=${encodeURIComponent(text)}`;
-            window.open(telegramUrl, '_blank');
-        }
-
-        this.hideModal('share-modal');
-    }
-
-    formatRecipeText(recipe) {
-        return `🍳 ${recipe.name}\n\n` +
-               `⏱️ Время: ${recipe.time}\n` +
-               `🎚️ Сложность: ${recipe.difficulty}\n\n` +
-               `Ингредиенты:\n${recipe.ingredients.map(ing => `• ${ing}`).join('\n')}\n\n` +
-               `Приготовление:\n${recipe.steps.map((step, i) => `${i+1}. ${step}`).join('\n')}\n\n` +
-               `Найдено в FridgeChefs`;
-    }
-
-    downloadRecipe(recipeId) {
-        const recipe = this.currentRecipes.find(r => r.id === recipeId);
-        if (!recipe) return;
-
-        const text = this.formatRecipeText(recipe);
-        const blob = new Blob([text], { type: 'text/plain' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${recipe.name}.txt`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-    }
-
-    async buyPremium() {
-        const selectedPlan = document.querySelector('#premium-modal .modal-option.selected')?.dataset.plan;
-        if (!selectedPlan) return;
-
-        try {
-            const response = await fetch('/api/buy-recipes', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ plan: selectedPlan })
-            });
-
-            const data = await response.json();
-            
-            if (data.success) {
-                alert(data.message);
-                this.hideModal('premium-modal');
-            } else {
-                alert('Ошибка при покупке');
-            }
-        } catch (error) {
-            console.error('Error buying premium:', error);
-            alert('Ошибка соединения');
-        }
-    }
-
-    showModal(modalId) {
-        document.getElementById(modalId).style.display = 'flex';
-        
-        if (modalId === 'share-modal') {
-            document.querySelectorAll('#share-modal .modal-option').forEach(option => {
-                option.classList.remove('selected');
-                option.addEventListener('click', () => {
-                    document.querySelectorAll('#share-modal .modal-option').forEach(opt => {
-                        opt.classList.remove('selected');
-                    });
-                    option.classList.add('selected');
-                });
-            });
-        }
-    }
-
-    hideModal(modalId) {
-        document.getElementById(modalId).style.display = 'none';
-    }
-}
-
-// Инициализация приложения
-const app = new FridgeChefsApp();
+                    <button class="btn-small btn-download" onclick="app.downloa
