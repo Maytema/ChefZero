@@ -1,265 +1,171 @@
-import { gsap } from "https://cdn.skypack.dev/gsap@3.12.2";
+class Animations {
+    constructor() {
+        this.init();
+    }
 
-export function initAnimations() {
-    // Initialize particles
-    initParticles();
-    
-    // Initialize tilt effect for chips
-    if (typeof VanillaTilt !== 'undefined') {
-        VanillaTilt.init(document.querySelectorAll(".chip"), {
-            max: 15,
-            speed: 400,
-            glare: true,
-            "max-glare": 0.2
-        });
+    init() {
+        this.setupHeaderAnimation();
+        this.setupRecipeCardAnimations();
+        this.setupButtonAnimations();
+        this.setupAccordionAnimations();
+        this.setupChipAnimations();
     }
-    
-    // Animate hero elements
-    gsap.from(".logo", {
-        duration: 1.5,
-        y: -50,
-        opacity: 0,
-        ease: "bounce.out"
-    });
-    
-    gsap.from(".slogan", {
-        duration: 1,
-        y: 30,
-        opacity: 0,
-        delay: 0.5,
-        ease: "power3.out"
-    });
-    
-    gsap.from(".search-container", {
-        duration: 1,
-        y: 30,
-        opacity: 0,
-        delay: 0.8,
-        ease: "power3.out"
-    });
-    
-    // Floating animation for chips
-    gsap.to(".chip", {
-        y: () => Math.random() * 10 - 5,
-        duration: 2,
-        repeat: -1,
-        yoyo: true,
-        ease: "sine.inOut",
-        stagger: 0.1
-    });
-    
-    // Hover effect for recipe cards
-    document.querySelectorAll('.recipe-card').forEach(card => {
-        card.addEventListener('mouseenter', () => {
-            gsap.to(card, {
-                scale: 1.05,
-                duration: 0.3,
-                ease: "power2.out"
-            });
-        });
-        
-        card.addEventListener('mouseleave', () => {
-            gsap.to(card, {
-                scale: 1,
-                duration: 0.3,
-                ease: "power2.out"
-            });
-        });
-    });
-    
-    // Search input focus effect
-    const searchInput = document.getElementById('productSearch');
-    searchInput.addEventListener('focus', () => {
-        gsap.to(searchInput, {
-            scale: 1.02,
-            boxShadow: "0 0 30px rgba(251, 191, 36, 0.4)",
-            duration: 0.3
-        });
-    });
-    
-    searchInput.addEventListener('blur', () => {
-        gsap.to(searchInput, {
-            scale: 1,
-            boxShadow: "none",
-            duration: 0.3
-        });
-    });
-}
 
-function initParticles() {
-    const canvas = document.getElementById('particlesCanvas');
-    if (!canvas) return;
-    
-    const ctx = canvas.getContext('2d');
-    const particles = [];
-    const particleCount = 30;
-    
-    // Set canvas size
-    function resizeCanvas() {
-        canvas.width = canvas.offsetWidth;
-        canvas.height = canvas.offsetHeight;
-    }
-    
-    resizeCanvas();
-    window.addEventListener('resize', resizeCanvas);
-    
-    // Food emojis for particles
-    const foodEmojis = ['🍕', '🍔', '🍟', '🌮', '🍣', '🍜', '🍦', '🍩', '🍪', '🍎', '🍇', '🥑', '🥦', '🧀', '🥚'];
-    
-    // Create particles
-    for (let i = 0; i < particleCount; i++) {
-        particles.push({
-            x: Math.random() * canvas.width,
-            y: Math.random() * canvas.height,
-            emoji: foodEmojis[Math.floor(Math.random() * foodEmojis.length)],
-            size: Math.random() * 20 + 15,
-            speedX: Math.random() * 2 - 1,
-            speedY: Math.random() * 2 - 1,
-            rotation: Math.random() * 360,
-            rotationSpeed: Math.random() * 2 - 1
-        });
-    }
-    
-    // Animation loop
-    function animate() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+    setupHeaderAnimation() {
+        const header = document.querySelector('.header');
+        let lastScroll = 0;
         
-        particles.forEach(p => {
-            // Update position
-            p.x += p.speedX;
-            p.y += p.speedY;
-            p.rotation += p.rotationSpeed;
+        window.addEventListener('scroll', () => {
+            const currentScroll = window.pageYOffset;
             
-            // Bounce off edges
-            if (p.x < 0 || p.x > canvas.width) p.speedX *= -1;
-            if (p.y < 0 || p.y > canvas.height) p.speedY *= -1;
-            
-            // Draw emoji
-            ctx.save();
-            ctx.translate(p.x, p.y);
-            ctx.rotate(p.rotation * Math.PI / 180);
-            ctx.font = `${p.size}px serif`;
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.globalAlpha = 0.3;
-            ctx.fillText(p.emoji, 0, 0);
-            ctx.restore();
-        });
-        
-        requestAnimationFrame(animate);
-    }
-    
-    animate();
-}
-
-// Particle burst effect for AI button
-export function createParticleBurst(x, y) {
-    const particles = [];
-    const colors = ['#FBBF24', '#EC4899', '#6366F1', '#10B981'];
-    
-    for (let i = 0; i < 30; i++) {
-        particles.push({
-            x,
-            y,
-            color: colors[Math.floor(Math.random() * colors.length)],
-            size: Math.random() * 5 + 2,
-            speedX: Math.random() * 6 - 3,
-            speedY: Math.random() * 6 - 3,
-            life: 100
-        });
-    }
-    
-    const canvas = document.getElementById('confettiCanvas');
-    const ctx = canvas.getContext('2d');
-    
-    // Set canvas size
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-    
-    function animateParticles() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        
-        particles.forEach((p, i) => {
-            p.x += p.speedX;
-            p.y += p.speedY;
-            p.life -= 2;
-            p.speedY += 0.1; // gravity
-            
-            if (p.life > 0) {
-                ctx.beginPath();
-                ctx.fillStyle = p.color;
-                ctx.globalAlpha = p.life / 100;
-                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-                ctx.fill();
+            if (currentScroll > lastScroll && currentScroll > 100) {
+                header.style.transform = 'translateY(-100%)';
             } else {
-                particles.splice(i, 1);
+                header.style.transform = 'translateY(0)';
+            }
+            
+            lastScroll = currentScroll;
+        });
+    }
+
+    setupRecipeCardAnimations() {
+        document.addEventListener('mouseover', (e) => {
+            const card = e.target.closest('.recipe-card');
+            if (card) {
+                card.style.transform = 'translateY(-8px) scale(1.02)';
+                card.style.boxShadow = '0 20px 40px rgba(0, 0, 0, 0.3)';
             }
         });
         
-        if (particles.length > 0) {
-            requestAnimationFrame(animateParticles);
-        }
-    }
-    
-    animateParticles();
-}
-
-// Explode animation for chip removal
-export function explodeChip(chip) {
-    const rect = chip.getBoundingClientRect();
-    const x = rect.left + rect.width / 2;
-    const y = rect.top + rect.height / 2;
-    
-    gsap.to(chip, {
-        scale: 2,
-        opacity: 0,
-        duration: 0.5,
-        ease: "power2.out",
-        onComplete: () => chip.remove()
-    });
-    
-    // Add mini particles
-    createMiniExplosion(x, y);
-}
-
-function createMiniExplosion(x, y) {
-    const particles = [];
-    const canvas = document.getElementById('confettiCanvas');
-    const ctx = canvas.getContext('2d');
-    
-    for (let i = 0; i < 15; i++) {
-        particles.push({
-            x,
-            y,
-            color: '#EC4899',
-            size: Math.random() * 3 + 1,
-            speedX: Math.random() * 4 - 2,
-            speedY: Math.random() * 4 - 2,
-            life: 50
-        });
-    }
-    
-    function animate() {
-        particles.forEach((p, i) => {
-            p.x += p.speedX;
-            p.y += p.speedY;
-            p.life--;
-            
-            if (p.life > 0) {
-                ctx.beginPath();
-                ctx.fillStyle = p.color;
-                ctx.globalAlpha = p.life / 50;
-                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-                ctx.fill();
-            } else {
-                particles.splice(i, 1);
+        document.addEventListener('mouseout', (e) => {
+            const card = e.target.closest('.recipe-card');
+            if (card) {
+                card.style.transform = 'translateY(0) scale(1)';
+                card.style.boxShadow = '';
             }
         });
+    }
+
+    setupButtonAnimations() {
+        document.addEventListener('click', (e) => {
+            const button = e.target.closest('button');
+            if (button && !button.classList.contains('toast-close')) {
+                this.createRipple(e, button);
+            }
+        });
+    }
+
+    createRipple(event, element) {
+        const ripple = document.createElement('span');
+        const rect = element.getBoundingClientRect();
         
-        if (particles.length > 0) {
-            requestAnimationFrame(animate);
+        const size = Math.max(rect.width, rect.height);
+        const x = event.clientX - rect.left - size / 2;
+        const y = event.clientY - rect.top - size / 2;
+
+        ripple.style.cssText = `
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.7);
+            transform: scale(0);
+            animation: ripple 0.6s linear;
+            width: ${size}px;
+            height: ${size}px;
+            top: ${y}px;
+            left: ${x}px;
+            pointer-events: none;
+        `;
+
+        element.style.position = 'relative';
+        element.style.overflow = 'hidden';
+        element.appendChild(ripple);
+
+        setTimeout(() => ripple.remove(), 600);
+    }
+
+    setupAccordionAnimations() {
+        document.addEventListener('click', (e) => {
+            const header = e.target.closest('.category-header');
+            if (!header) return;
+            
+            const category = header.parentElement;
+            const content = category.querySelector('.category-content');
+            const arrow = category.querySelector('.category-arrow i');
+            
+            if (!content) return;
+            
+            if (category.classList.contains('active')) {
+                content.style.maxHeight = null;
+                arrow.style.transform = 'rotate(0deg)';
+                category.classList.remove('active');
+            } else {
+                content.style.maxHeight = content.scrollHeight + 'px';
+                arrow.style.transform = 'rotate(180deg)';
+                category.classList.add('active');
+            }
+        });
+    }
+
+    setupChipAnimations() {
+        document.addEventListener('DOMNodeInserted', (e) => {
+            if (e.target.classList && e.target.classList.contains('chip')) {
+                this.animateChipAdd(e.target);
+            }
+        });
+    }
+
+    animateChipAdd(chip) {
+        chip.style.animation = 'slideIn 0.3s ease';
+        
+        setTimeout(() => {
+            chip.style.transform = 'scale(1.1)';
+            setTimeout(() => {
+                chip.style.transform = 'scale(1)';
+            }, 150);
+        }, 300);
+    }
+
+    animateModalIn(modal) {
+        const content = modal.querySelector('.modal-content');
+        if (content) {
+            content.style.animation = 'modalIn 0.3s ease';
+        }
+    }
+}
+
+// Добавляем стили анимаций
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes ripple {
+        to {
+            transform: scale(4);
+            opacity: 0;
         }
     }
     
-    animate();
-}
+    @keyframes fall {
+        to {
+            transform: translateY(100vh) rotate(${Math.random() * 360}deg);
+            opacity: 0;
+        }
+    }
+    
+    .header {
+        transition: transform 0.3s ease;
+    }
+    
+    .recipe-card {
+        transition: all 0.3s ease;
+    }
+    
+    .chip {
+        transition: transform 0.2s ease;
+    }
+`;
+
+document.head.appendChild(style);
+
+// Инициализация
+document.addEventListener('DOMContentLoaded', () => {
+    new Animations();
+});
