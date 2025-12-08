@@ -1,53 +1,16 @@
 {
-  "name": "ChefZero",
-  "short_name": "ChefZero",
-  "description": "0 рублей → вкусный ужин. ИИ-шеф создает рецепты из ваших продуктов",
-  "start_url": "/",
-  "display": "standalone",
-  "background_color": "#6366F1",
-  "theme_color": "#6366F1",
-  "orientation": "portrait",
-  "icons": [
-    {
-      "src": "/icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "/icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any maskable"
-    }
-  ],
-  "categories": ["food", "lifestyle", "productivity"],
-  "shortcuts": [
-    {
-      "name": "Новый рецепт",
-      "short_name": "Рецепт",
-      "description": "Создать ИИ-рецепт из продуктов",
-      "url": "/?action=new"
-    },
-    {
-      "name": "Избранное",
-      "short_name": "Избранное",
-      "description": "Сохраненные рецепты",
-      "url": "/?action=favorites"
-    }
-  ],
-  "screenshots": [
-    {
-      "src": "/screenshot-desktop.png",
-      "sizes": "1280x720",
-      "type": "image/png",
-      "form_factor": "wide"
-    },
-    {
-      "src": "/screenshot-mobile.png",
-      "sizes": "750x1334",
-      "type": "image/png",
-      "form_factor": "narrow"
-    }
-  ]
+    "name": "ChefZero",
+    "short_name": "ChefZero",
+    "description": "ИИ-шеф для поиска рецептов",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#0F172A",
+    "theme_color": "#6366F1",
+    "icons": [
+        {
+            "src": "data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🍳</text></svg>",
+            "sizes": "any",
+            "type": "image/svg+xml"
+        }
+    ]
 }
